@@ -1,2 +1,6 @@
 MIUI Version 14.0.12.0(TKDEUXM)
 Android Version (13 TKQ1.220829.002)
+
+crDroid 12.11 (Android 16)
+Magisk 30700
+OrangeFox R12.0-v10

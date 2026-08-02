@@ -3,7 +3,7 @@
 Step-by-step log for unlocking the bootloader and rooting with Magisk (Path 1 & 2).
 For Docker support, this is a prerequisite — then continue with [DOCKER.md](DOCKER.md).
 
-> ⚠️ Unlocking the bootloader wipes the device completely. Back up everything before starting.
+> WARNING: Unlocking the bootloader wipes the device completely. Back up everything before starting.
 
 ---
 
@@ -64,7 +64,7 @@ Any of those actions resets the timer. Simplest approach: power the phone off an
 fastboot devices
 
 # Flash the patched image
-fastboot flash boot magisk_patched.img
+fastboot flash boot magisk_patched_cdDroid.img
 fastboot reboot
 ```
 
@@ -92,3 +92,23 @@ fastboot reboot
 | 3 | Flash patched image via fastboot |
 
 Result: rooted MIUI 14. Docker is not possible on this base — see [DOCKER.md](DOCKER.md) for Path 3.
+
+---
+
+## Path 3: Docker Lab
+
+Full guide in [DOCKER.md](DOCKER.md). The only difference from Path 1/2 is that crDroid ships as an OTA zip with `payload.bin` instead of a flat `boot.img` — you need to extract it before patching with Magisk:
+
+```bash
+pip install payload_dumper
+payload_dumper --partitions boot payload.bin
+# outputs boot.img to ./output/
+```
+
+From there, patch and flash as normal (Phase 2 and 3 above). The patched image (`magisk_patched_cdDroid.img`) is included in `boot_images/`.
+
+---
+
+## Post-Root Setup
+
+See [SETUP.md](SETUP.md) for network configuration and Termux auto-start services.

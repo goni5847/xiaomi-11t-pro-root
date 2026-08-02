@@ -10,8 +10,8 @@ Running Docker on this device requires a kernel with cgroups, namespaces, and ov
 
 | ROM | Status for vili | Notes |
 |-----|----------------|-------|
-| **crDroid** | ✅ Official, actively maintained | Recommended — weekly builds, maintained by swiitchOFF who also maintains the primary vili kernel |
-| **LineageOS** | ⚠️ Unofficial XDA build only | No official support, no wiki page, no guaranteed updates |
+| **crDroid** | Official, actively maintained | Recommended — weekly builds, maintained by swiitchOFF who also maintains the primary vili kernel |
+| **LineageOS** | Unofficial XDA build only | No official support, no wiki page, no guaranteed updates |
 | **PixelOS** | Community build | Stock Pixel feel |
 | **DerpFest** | Community build | Feature-rich alternative |
 
@@ -73,7 +73,7 @@ CONFIG_MEMCG=y
 CONFIG_OVERLAY_FS=y
 ```
 
-All six must be present for Docker to work. If none of the community kernels have them, skip to Step 6 to build your own.
+All six must be present for Docker to work. If none of the community kernels have them, try a different kernel build.
 
 Most community kernels ship as a flashable zip — sideload from recovery:
 
@@ -85,14 +85,47 @@ adb sideload kernel.zip
 
 ## Step 4: Root with Magisk
 
-Extract `boot.img` from the ROM zip, patch it with the Magisk app (same process as [PROCESS.md](PROCESS.md) Phase 2), then flash:
+crDroid ships as an OTA zip containing `payload.bin` — there is no flat `boot.img` to extract directly. You need to dump it first.
+
+### Extract boot.img from payload.bin
 
 ```bash
-fastboot flash boot magisk_patched.img
+pip install payload_dumper
+payload_dumper --partitions boot payload.bin
+# outputs boot.img to ./output/
+```
+
+### Patch with Magisk
+
+Transfer `boot.img` to the phone:
+```bash
+adb push output/boot.img /sdcard/Download/boot.img
+```
+
+Open Magisk → **Install** → **Select and Patch a File** → select `boot.img`. Magisk writes `magisk_patched_XXXXX.img` to `/sdcard/Download/`.
+
+Pull it back to your PC:
+```bash
+adb pull /sdcard/Download/magisk_patched_XXXXX.img boot_images/magisk_patched_cdDroid.img
+```
+
+### Flash
+
+```bash
+# from the repo root
+adb reboot bootloader
+fastboot flash boot boot_images/magisk_patched_cdDroid.img
 fastboot reboot
 ```
 
-Some ROMs support flashing Magisk as a zip directly from recovery — check the ROM's own documentation.
+After first boot, open Magisk. If it shows "Requires Additional Setup", complete it and reboot. Then in Termux:
+
+```bash
+su
+whoami   # should return: root
+```
+
+Magisk will show a popup to grant root to Termux — tap **Grant**. Root confirmed working with Magisk 30700 on crDroid 12.11.
 
 ---
 
@@ -131,23 +164,10 @@ All `Generally Necessary` items should show `enabled`. Misses in `Optional Featu
 
 ---
 
-## Step 6 (Optional): Build Your Own Kernel
-
-If no community kernel has all required flags, use the `build-kernel.yml` workflow in this repo. It clones the kernel source, injects all Docker config flags, compiles with Proton Clang, and uploads the `Image` as an artifact.
-
-1. Go to **Actions > Build Xiaomi 11T Pro (vili) Kernel > Run workflow**.
-2. Set `KERNEL_SOURCE`, `KERNEL_BRANCH`, and `DEFCONFIG` for your chosen source.
-3. Download the `Compiled_Kernel_Image` artifact.
-4. Package with AnyKernel3 and flash from recovery, or inject into `boot.img` and flash via fastboot.
-
-This kernel must be paired with an AOSP ROM — not MIUI. See the workflow file's warning header for details.
-
----
-
 ## Troubleshooting
 
 **Docker daemon fails to start**
-Run `dmesg | grep -i cgroup`. If cgroup errors appear, the kernel is missing required flags. Try a different community kernel or build your own (Step 6). Ensure you ran `su` before `dockerd`.
+Run `dmesg | grep -i cgroup`. If cgroup errors appear, the kernel is missing required flags. Try a different community kernel. Ensure you ran `su` before `dockerd`.
 
 **`docker run` fails with network errors**
 The kernel needs `CONFIG_VETH`, `CONFIG_BRIDGE`, and `CONFIG_IP_NF_TARGET_MASQUERADE`. Check the kernel config.
